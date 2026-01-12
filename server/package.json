@@ -1,13 +1,23 @@
 {
-  "name": "server",
+  "name": "gigflow-server",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "Backend API for GigFlow freelance marketplace",
+  "type": "module",
+  "main": "src/server.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "type": "commonjs"
+  "keywords": ["gigflow", "node", "express", "mongodb"],
+  "author": "Arvind Singh",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.19.2",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "cookie-parser": "^1.4.7"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.11"
+  }
 }
