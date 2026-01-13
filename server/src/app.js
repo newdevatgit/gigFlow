@@ -1,6 +1,7 @@
 import express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
+import authRoutes from "./routes/authRoutes.js";
 
 const app = express();
 
@@ -14,11 +15,10 @@ app.use(
   })
 );
 
-/**
- * Health Check Route
- */
 app.get("/", (req, res) => {
-  res.send("GigFlow API is running...");
+  res.send("GigFlow API is running 🚀");
 });
+
+app.use("/api/auth", authRoutes);
 
 export default app;
