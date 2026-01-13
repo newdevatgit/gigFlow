@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import Bid from "../models/Bid.js";
 import Gig from "../models/Gig.js";
 
@@ -21,7 +22,9 @@ export const submitBid = async (req, res) => {
 
     // Prevent owner from bidding on own gig
     if (gig.owner.toString() === req.user._id.toString()) {
-      return res.status(403).json({ message: "You cannot bid on your own gig" });
+      return res
+        .status(403)
+        .json({ message: "You cannot bid on your own gig" });
     }
 
     // Prevent duplicate bids by same freelancer
@@ -31,7 +34,9 @@ export const submitBid = async (req, res) => {
     });
 
     if (existingBid) {
-      return res.status(400).json({ message: "You have already bid on this gig" });
+      return res
+        .status(400)
+        .json({ message: "You have already bid on this gig" });
     }
 
     const bid = await Bid.create({
@@ -63,7 +68,9 @@ export const getBidsForGig = async (req, res) => {
 
     // Only owner can view bids
     if (gig.owner.toString() !== req.user._id.toString()) {
-      return res.status(403).json({ message: "Not authorized to view bids" });
+      return res
+        .status(403)
+        .json({ message: "Not authorized to view bids" });
     }
 
     const bids = await Bid.find({ gig: gigId })
@@ -73,5 +80,68 @@ export const getBidsForGig = async (req, res) => {
     res.json(bids);
   } catch (error) {
     res.status(500).json({ message: error.message });
+  }
+};
+
+/**
+ * @desc Hire a freelancer for a gig (atomic)
+ * @route PATCH /api/bids/:bidId/hire
+ * @access Private (Gig Owner)
+ */
+export const hireBid = async (req, res) => {
+  const session = await mongoose.startSession();
+
+  try {
+    session.startTransaction();
+
+    const { bidId } = req.params;
+
+    const bid = await Bid.findById(bidId).session(session);
+    if (!bid) {
+      throw new Error("Bid not found");
+    }
+
+    const gig = await Gig.findById(bid.gig).session(session);
+    if (!gig) {
+      throw new Error("Gig not found");
+    }
+
+    // Only gig owner can hire
+    if (gig.owner.toString() !== req.user._id.toString()) {
+      throw new Error("Not authorized to hire");
+    }
+
+    // Prevent double hiring
+    if (gig.status === "assigned") {
+      throw new Error("Gig already assigned");
+    }
+
+    // Mark gig as assigned
+    gig.status = "assigned";
+    await gig.save({ session });
+
+    // Mark selected bid as hired
+    bid.status = "hired";
+    await bid.save({ session });
+
+    // Reject all other bids
+    await Bid.updateMany(
+      {
+        gig: gig._id,
+        _id: { $ne: bid._id },
+      },
+      { status: "rejected" },
+      { session }
+    );
+
+    await session.commitTransaction();
+    session.endSession();
+
+    res.json({ message: "Freelancer hired successfully" });
+  } catch (error) {
+    await session.abortTransaction();
+    session.endSession();
+
+    res.status(400).json({ message: error.message });
   }
 };
